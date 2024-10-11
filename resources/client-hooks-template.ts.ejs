@@ -1,0 +1,248 @@
+<%
+function getKeysName() {
+  return `${utils.toTitleCase(entity.name)}Keys`;
+}
+
+function getQueriesName() {
+  return `${utils.toTitleCase(entity.name)}Queries`;
+}
+
+function getPluralizedTitleCasedEntityName() {
+  return utils.pluralize(utils.toTitleCase(entity.name));
+}
+
+function getSearchFieldRequestName() {
+  return `Search${getPluralizedTitleCasedEntityName()}FieldRequest`;
+}
+
+function getGetManyFieldRequestName() {
+  return `GetMany${getPluralizedTitleCasedEntityName()}FieldRequest`;
+}
+
+function getGetOneFieldRequestName() {
+  return `GetOne${utils.toTitleCase(entity.name)}FieldRequest`;
+}
+-%>
+<% if (entity.api?.booleans.hasAny) { -%>
+'use client';
+
+// library imports
+import {
+  <%_ if (entity.api.booleans.hasSearch || entity.api.booleans.hasCreateOne || entity.api.booleans.hasUpdateOne || entity.api.booleans.hasDeleteOne) { -%>
+  UseMutationOptions,
+  UseMutationResult,
+  useMutation,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasCreateOne || entity.api.booleans.hasUpdateOne || entity.api.booleans.hasDeleteOne) { -%>
+  useQueryClient,
+  <%_ } -%>
+} from '@tanstack/react-query';
+
+// config imports
+  <%_ if (entity.api.booleans.hasSearch || entity.api.booleans.hasCreateOne || entity.api.booleans.hasUpdateOne || entity.api.booleans.hasDeleteOne) { -%>
+import useHandleMutationError from '<%- entity.apiNextTanstack.packages.hookMutationErrorHandler %>';
+  <%_ } -%>
+import {
+  <%_ if (entity.api.booleans.hasSearch) { -%>
+  <%= getSearchFieldRequestName() %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetMany) { -%>
+  <%= getGetManyFieldRequestName() %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetOne || entity.api.booleans.hasGetOneSafe || entity.api.booleans.hasCreateOne || entity.api.booleans.hasUpdateOne) { -%>
+  <%= getGetOneFieldRequestName() %>,
+  <%_ } -%>
+} from '<%- entity.apiNextTanstack.packages.hookFieldRequests %>';
+
+// entity imports
+import <%= entity.api.strings.apiClientClass %> from '<%- entity.apiNextTanstack.packages.hookClientClient %>';
+import {
+  <%_ if (entity.api.booleans.hasSearch) { -%>
+  <%= entity.api.strings.searchQuery %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetOneRequest) { -%>
+  <%= entity.api.strings.getOneParams %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasCreateOne) { -%>
+  <%= entity.api.strings.createOneBody %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasUpdateOne) { -%>
+  <%= entity.api.strings.updateOneBody %>,
+  <%_ } -%>
+} from '<%= entity.api.request.import %>';
+  <%_ if (entity.api.booleans.hasAny) { -%>
+import {
+  <%= getKeysName() %>,
+  <%_ if (entity.api.booleans.hasSearch) { -%>
+  <%= `buildSearch${getPluralizedTitleCasedEntityName()}QueryWith` %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetMany) { -%>
+  <%= `buildGetMany${getPluralizedTitleCasedEntityName()}QueryWith` %>,
+    <%_ entity.fields.filter((f) => f.strings.minVar || f.strings.maxVar).forEach((field) => { -%>
+      <%_ if (field.strings.maxVar) { -%>
+  <%= `buildGetManyPageBy${utils.toTitleCase(field.name)}AscQueryWith` %>,
+      <%_ } -%>
+      <%_ if (field.strings.minVar) { -%>
+  <%= `buildGetManyPageBy${utils.toTitleCase(field.name)}DescQueryWith` %>,
+      <%_ } -%>
+    <%_ }); -%>
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetOne) { -%>
+  <%= `buildGetOne${utils.toTitleCase(entity.name)}QueryWith` %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetOneSafe) { -%>
+  <%= `buildGetOne${utils.toTitleCase(entity.name)}SafeQueryWith` %>,
+  <%_ } -%>
+} from './<%= `${utils.toKababCase(entity.name)}-base${utils.getModuleSuffix(config)}` %>';
+import {
+    <%_ if (entity.api.booleans.hasSearch) { -%>
+  <%= `Search${entity.strings.selectedResponseClass}` %>,
+    <%_ } -%>
+    <%_ if (entity.api.booleans.hasGetOne || entity.api.booleans.hasGetOneSafe || entity.api.booleans.hasCreateOne || entity.api.booleans.hasUpdateOne) { -%>
+  <%= `GetOne${entity.strings.selectedResponseClass}` %>,
+    <%_ } -%>
+} from './<%= `${utils.toKababCase(entity.name)}-types` %>';
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasSearch || entity.api.booleans.hasGetMany || entity.api.booleans.hasGetOne || entity.api.booleans.hasGetOneSafe) { -%>
+
+    <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+    <%_ } -%>
+export const <%= getQueriesName() %> = {
+    <%_ if (entity.api.booleans.hasSearch) { -%>
+  search: <%= `buildSearch${getPluralizedTitleCasedEntityName()}QueryWith` %>(<%= entity.api.strings.apiClientClass %>.search, <%= getSearchFieldRequestName() %>),
+    <%_ } -%>
+    <%_ if (entity.api.booleans.hasGetMany) { -%>
+  getMany: <%= `buildGetMany${getPluralizedTitleCasedEntityName()}QueryWith` %>(<%= entity.api.strings.apiClientClass %>.getMany, <%= getGetManyFieldRequestName() %>),
+      <%_ entity.fields.filter((f) => f.strings.minVar || f.strings.maxVar).forEach((field) => { -%>
+        <%_ if (field.strings.maxVar) { -%>
+  <%= `getManyPageBy${utils.toTitleCase(field.name)}Asc` %>: <%= `buildGetManyPageBy${utils.toTitleCase(field.name)}AscQueryWith` %>(<%= entity.api.strings.apiClientClass %>.getMany, <%= getGetManyFieldRequestName() %>),
+        <%_ } -%>
+        <%_ if (field.strings.minVar) { -%>
+  <%= `getManyPageBy${utils.toTitleCase(field.name)}Desc` %>: <%= `buildGetManyPageBy${utils.toTitleCase(field.name)}DescQueryWith` %>(<%= entity.api.strings.apiClientClass %>.getMany, <%= getGetManyFieldRequestName() %>),
+        <%_ } -%>
+      <%_ }); -%>
+    <%_ } -%>
+    <%_ if (entity.api.booleans.hasGetOne) { -%>
+  getOne: <%- `buildGetOne${utils.toTitleCase(entity.name)}QueryWith` %>(<%= entity.api.strings.apiClientClass %>.getOne, <%= getGetOneFieldRequestName() %>),
+    <%_ } -%>
+    <%_ if (entity.api.booleans.hasGetOneSafe) { -%>
+  getOneSafe: <%- `buildGetOne${utils.toTitleCase(entity.name)}SafeQueryWith` %>(<%= entity.api.strings.apiClientClass %>.getOneSafe, <%= getGetOneFieldRequestName() %>),
+    <%_ } -%>
+};
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasSearch) { -%>
+
+    <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+    <%_ } -%>
+export function <%= `useMutationSearch${utils.pluralize(utils.toTitleCase(entity.name))}` %>(
+  options: Partial<
+    UseMutationOptions<
+      <%= `Search${entity.strings.selectedResponseClass}` %>[],
+      any,
+      <%= entity.api.strings.searchQuery %>
+    >
+  > = {}
+): UseMutationResult<
+  <%= `Search${entity.strings.selectedResponseClass}` %>[],
+  any,
+  <%= entity.api.strings.searchQuery %>
+> {
+  const onError = useHandleMutationError();
+  const mutationFn = (query: <%= entity.api.strings.searchQuery %>) =>
+    <%= entity.api.strings.apiClientClass %>
+      .search(query, <%= getSearchFieldRequestName() %>)
+      .then((page) => page.<%= utils.pluralize(utils.toCamelCase(entity.name)) %>);
+  return useMutation({ mutationFn, onError, ...options });
+}
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasCreateOne) { -%>
+
+    <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+    <%_ } -%>
+export function useCreateOne<%= utils.toTitleCase(entity.name) %>(
+  options: Partial<
+    UseMutationOptions<
+      <%= `GetOne${entity.strings.selectedResponseClass}` %>, any, <%= entity.api.strings.createOneBody %>
+    >
+  > = {}
+): UseMutationResult<<%= `GetOne${entity.strings.selectedResponseClass}` %>, any, <%= entity.api.strings.createOneBody %>> {
+  const mutationKey = ['<%= `createOne${utils.toTitleCase(entity.name)}` %>'];
+  const mutationFn = (body: <%= entity.api.strings.createOneBody %>) =>
+    <%= entity.api.strings.apiClientClass %>
+      .createOne(body, <%= getGetOneFieldRequestName() %>)
+      .then((page) => page.<%= utils.toCamelCase(entity.name) %>);
+
+  const queryClient = useQueryClient();
+  const onError = useHandleMutationError();
+
+  const onSuccess = () => queryClient.invalidateQueries({ queryKey: <%= getKeysName() %>.getManyAll() });
+
+  return useMutation({ mutationKey, mutationFn, onSuccess, onError, ...options });
+}
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasUpdateOne) { -%>
+
+export type <%= `UpdateOne${utils.toTitleCase(entity.name)}MutationParams` %> = {
+  params: <%= entity.api.strings.getOneParams %>;
+  body: <%= entity.api.strings.updateOneBody %>;
+};
+
+    <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+    <%_ } -%>
+export function <%= `useUpdateOne${utils.toTitleCase(entity.name)}` %>(
+  options: Partial<
+    UseMutationOptions<
+      <%= `GetOne${entity.strings.selectedResponseClass}` %>, any, <%= `UpdateOne${utils.toTitleCase(entity.name)}MutationParams` %>
+    >
+  > = {}
+): UseMutationResult<<%= `GetOne${entity.strings.selectedResponseClass}` %>, any, <%= `UpdateOne${utils.toTitleCase(entity.name)}MutationParams` %>> {
+  const mutationKey = ['<%= `updateOne${utils.toTitleCase(entity.name)}` %>'];
+  const mutationFn = ({ params, body }: <%= `UpdateOne${utils.toTitleCase(entity.name)}MutationParams` %>) =>
+    <%= entity.api.strings.apiClientClass %>
+      .updateOne(params, body, <%= getGetOneFieldRequestName() %>)
+      .then((page) => page.<%= utils.toCamelCase(entity.name) %>);
+
+  const queryClient = useQueryClient();
+  const onError = useHandleMutationError();
+  
+  const onSuccess = (
+    data: <%= `GetOne${entity.strings.selectedResponseClass}` %>,
+    { params }: <%= `UpdateOne${utils.toTitleCase(entity.name)}MutationParams` %>
+  ) => {
+    queryClient.invalidateQueries({ queryKey: <%= getKeysName() %>.getManyAll() });
+    queryClient.setQueryData(<%= getKeysName() %>.getOne(params), data);
+  }
+
+  return useMutation({ mutationKey, mutationFn, onSuccess, onError, ...options });
+}
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasDeleteOne) { -%>
+
+    <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+    <%_ } -%>
+export function <%= `useDeleteOne${utils.toTitleCase(entity.name)}` %>(
+  options: Partial<UseMutationOptions<{}, any, <%= entity.api.strings.getOneParams %>>> = {}
+): UseMutationResult<{}, any, <%= entity.api.strings.getOneParams %>> {
+  const mutationKey = ['<%= `deleteOne${utils.toTitleCase(entity.name)}` %>'];
+  const mutationFn = (params: <%= entity.api.strings.getOneParams %>) =>
+    <%= entity.api.strings.apiClientClass %>
+      .deleteOne(params, {})
+      .then((page) => page.<%= utils.toCamelCase(entity.name) %>);
+
+  const queryClient = useQueryClient();
+  const onError = useHandleMutationError();
+
+  const onSuccess = (_: {}, params: <%= entity.api.strings.getOneParams %>) => {
+    queryClient.invalidateQueries({ queryKey: <%= getKeysName() %>.getManyAll() });
+    queryClient.invalidateQueries({ queryKey: <%= getKeysName() %>.getOne(params) });
+  }
+
+  return useMutation({ mutationKey, mutationFn, onSuccess, onError, ...options });
+}
+  <%_ } -%>
+<% } -%>

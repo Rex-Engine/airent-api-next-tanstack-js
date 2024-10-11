@@ -1,0 +1,80 @@
+<%
+function getPluralizedTitleCasedEntityName() {
+  return utils.pluralize(utils.toTitleCase(entity.name));
+}
+
+function getSearchFieldRequestName() {
+  return `Search${getPluralizedTitleCasedEntityName()}FieldRequest`;
+}
+
+function getGetManyFieldRequestName() {
+  return `GetMany${getPluralizedTitleCasedEntityName()}FieldRequest`;
+}
+
+function getGetOneFieldRequestName() {
+  return `GetOne${utils.toTitleCase(entity.name)}FieldRequest`;
+}
+-%>
+<% if (entity.api.booleans.hasSearch || entity.api.booleans.hasGetMany || entity.api.booleans.hasGetOne || entity.api.booleans.hasGetOneSafe) { -%>
+// entity imports
+import <%= `${utils.toTitleCase(entity.name)}ServerApiClient` %> from '<%- entity.apiNextTanstack.packages.hookServerClient %>';
+import {
+  <%_ if (entity.api.booleans.hasSearch) { -%>
+  <%= `buildSearch${getPluralizedTitleCasedEntityName()}QueryWith` %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetMany) { -%>
+  <%= `buildGetMany${getPluralizedTitleCasedEntityName()}QueryWith` %>,
+    <%_ entity.fields.filter((f) => f.strings.minVar || f.strings.maxVar).forEach((field) => { -%>
+      <%_ if (field.strings.maxVar) { -%>
+  <%= `buildGetManyPageBy${utils.toTitleCase(field.name)}AscQueryWith` %>,
+      <%_ } -%>
+      <%_ if (field.strings.minVar) { -%>
+  <%= `buildGetManyPageBy${utils.toTitleCase(field.name)}DescQueryWith` %>,
+      <%_ } -%>
+    <%_ }); -%>
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetOne) { -%>
+  <%= `buildGetOne${utils.toTitleCase(entity.name)}QueryWith` %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetOneSafe) { -%>
+  <%= `buildGetOne${utils.toTitleCase(entity.name)}SafeQueryWith` %>,
+  <%_ } -%>
+} from './<%= `${utils.toKababCase(entity.name)}-base${utils.getModuleSuffix(config)}` %>';
+import {
+  <%_ if (entity.api.booleans.hasSearch) { -%>
+<%= getSearchFieldRequestName() %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetMany) { -%>
+<%= getGetManyFieldRequestName() %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetOne || entity.api.booleans.hasGetOneSafe || entity.api.booleans.hasCreateOne || entity.api.booleans.hasUpdateOne) { -%>
+<%= getGetOneFieldRequestName() %>,
+  <%_ } -%>
+} from '<%- entity.apiNextTanstack.packages.hookFieldRequests %>';
+
+  <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+  <%_ } -%>
+export const <%= `${utils.toTitleCase(entity.name)}ServerQueries` %> = {
+  <%_ if (entity.api.booleans.hasSearch) { -%>
+  search: <%= `buildSearch${getPluralizedTitleCasedEntityName()}QueryWith` %>(<%= `${utils.toTitleCase(entity.name)}ServerApiClient` %>.search, <%= getSearchFieldRequestName() %>),
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetMany) { -%>
+  getMany: <%= `buildGetMany${getPluralizedTitleCasedEntityName()}QueryWith` %>(<%= `${utils.toTitleCase(entity.name)}ServerApiClient` %>.getMany, <%= getGetManyFieldRequestName() %>),
+    <%_ entity.fields.filter((f) => f.strings.minVar || f.strings.maxVar).forEach((field) => { -%>
+      <%_ if (field.strings.maxVar) { -%>
+  <%= `getManyPageBy${utils.toTitleCase(field.name)}Asc` %>: <%= `buildGetManyPageBy${utils.toTitleCase(field.name)}AscQueryWith` %>(<%= `${utils.toTitleCase(entity.name)}ServerApiClient` %>.getMany, <%= getGetManyFieldRequestName() %>),
+      <%_ } -%>
+      <%_ if (field.strings.minVar) { -%>
+  <%= `getManyPageBy${utils.toTitleCase(field.name)}Desc` %>: <%= `buildGetManyPageBy${utils.toTitleCase(field.name)}DescQueryWith` %>(<%= `${utils.toTitleCase(entity.name)}ServerApiClient` %>.getMany, <%= getGetManyFieldRequestName() %>),
+      <%_ } -%>
+    <%_ }); -%>
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetOne) { -%>
+  getOne: <%- `buildGetOne${utils.toTitleCase(entity.name)}QueryWith` %>(<%= `${utils.toTitleCase(entity.name)}ServerApiClient` %>.getOne, <%= getGetOneFieldRequestName() %>),
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetOneSafe) { -%>
+  getOneSafe: <%- `buildGetOne${utils.toTitleCase(entity.name)}SafeQueryWith` %>(<%= `${utils.toTitleCase(entity.name)}ServerApiClient` %>.getOneSafe, <%= getGetOneFieldRequestName() %>),
+  <%_ } -%>
+};
+<% } -%>

@@ -1,0 +1,67 @@
+<%
+function getPluralizedTitleCasedEntityName() {
+  return utils.pluralize(utils.toTitleCase(entity.name));
+}
+
+function getSearchFieldRequestName() {
+  return `Search${getPluralizedTitleCasedEntityName()}FieldRequest`;
+}
+
+function getGetManyFieldRequestName() {
+  return `GetMany${getPluralizedTitleCasedEntityName()}FieldRequest`;
+}
+
+function getGetOneFieldRequestName() {
+  return `GetOne${utils.toTitleCase(entity.name)}FieldRequest`;
+}
+-%>
+<% if (entity.api?.booleans?.hasAny) { -%>
+// entity imports
+import {
+  <%= entity.strings.selectedResponseClass %>,
+  <%_ if (entity.api.booleans.hasGetMany) { -%>
+  <%= entity.api.strings.manyResponse %>,
+  <%_ } -%>
+} from '<%- entity.apiNextTanstack.packages.hookType %>';
+import {
+  <%_ if (entity.api.booleans.hasSearch) { -%>
+  <%= getSearchFieldRequestName() %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetMany) { -%>
+  <%= getGetManyFieldRequestName() %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetOne || entity.api.booleans.hasGetOneSafe || entity.api.booleans.hasCreateOne || entity.api.booleans.hasUpdateOne) { -%>
+  <%= getGetOneFieldRequestName() %>,
+  <%_ } -%>
+} from '<%- entity.apiNextTanstack.packages.hookFieldRequests %>';
+  <%_ if (entity.api.booleans.hasSearch) { -%>
+
+    <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+    <%_ } -%>
+export type <%= `Search${entity.strings.selectedResponseClass}` %> =
+  <%= entity.strings.selectedResponseClass %><typeof <%= getSearchFieldRequestName() %>>;
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetMany) { -%>
+
+    <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+    <%_ } -%>
+export type <%= `GetMany${entity.strings.selectedResponseClass}` %> =
+  <%= entity.strings.selectedResponseClass %><typeof <%= getGetManyFieldRequestName() %>>;
+
+    <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+    <%_ } -%>
+export type <%= `Selected${entity.api.strings.manyResponse}` %> =
+  <%= entity.api.strings.manyResponse %><typeof <%= getGetManyFieldRequestName() %>>;
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetOne || entity.api.booleans.hasGetOneSafe || entity.api.booleans.hasCreateOne || entity.api.booleans.hasUpdateOne) { -%>
+
+    <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+    <%_ } -%>
+export type <%= `GetOne${entity.strings.selectedResponseClass}` %> =
+  <%= entity.strings.selectedResponseClass %><typeof <%= getGetOneFieldRequestName() %>>;
+  <%_ } -%>
+<% } -%>

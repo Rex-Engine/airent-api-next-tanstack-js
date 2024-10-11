@@ -1,0 +1,208 @@
+<%
+function getKeysName() {
+  return `${utils.toTitleCase(entity.name)}Keys`;
+}
+
+function getPluralizedTitleCasedEntityName() {
+  return utils.pluralize(utils.toTitleCase(entity.name));
+}
+
+function buildSearchOrGetManyQueryOptionsLines(isSearch) {
+  const fnType = isSearch ? 'SearchFn' : 'GetManyFn';
+  const fnVar = isSearch ? 'searchFn' : 'getManyFn';
+  const queryType = isSearch ? entity.api.strings.searchQuery : entity.api.strings.getManyQuery;
+  return [
+    `type ${fnType}<S extends ${entity.strings.fieldRequestClass}> = (`,
+    `  query: ${queryType},`,
+    '  fieldRequest: S,',
+    '  ...extras: any[]',
+    `) => Promise<${entity.api.strings.manyResponse}<S>>;`,
+    '',
+    `export function build${isSearch ? 'Search' : 'GetMany'}${getPluralizedTitleCasedEntityName()}QueryWith<`,
+    `  F extends ${fnType}<S>,`,
+    `  S extends ${entity.strings.fieldRequestClass},`,
+    `>(${fnVar}: F, fieldRequest: S) {`,
+    '  return (',
+    `    query: ${queryType},`,
+    '    ...extras: Parameters<F> extends [any, any, ...infer Rest] ? Rest : never',
+    '  ) => queryOptions({',
+    `    queryKey: ${getKeysName()}.${isSearch ? 'search' : 'getMany'}(query),`,
+    `    queryFn: () => ${fnVar}(query, fieldRequest, ...extras).then((page) => page.${utils.toCamelCase(utils.pluralize(entity.name))}),`,
+    '    enabled: isEnabled(query),',
+    '  });',
+    '}',
+  ];
+}
+
+function buildGetManyPageQueryOptionsLines(field, isAscending) {
+  if (isAscending && !field.strings.maxVar) {
+    return [];
+  }
+  if (!isAscending && !field.strings.minVar) {
+    return [];
+  }
+  return [
+    `export function buildGetManyPageBy${utils.toTitleCase(field.name)}${isAscending ? 'Asc' : 'Desc'}QueryWith<`,
+    `  F extends GetManyFn<S>,`,
+    `  S extends ${entity.strings.fieldRequestClass},`,
+    '>(getManyFn: F, fieldRequest: S) {',
+    '  return (',
+    `    query: ${entity.api.strings.getManyQuery},`,
+    '    ...extras: Parameters<F> extends [any, any, ...infer Rest] ? Rest : never',
+    '  ) => infiniteQueryOptions({',
+    `    queryKey: ${getKeysName()}.getMany(query),`,
+    `    queryFn: ({ pageParam }: QueryFunctionContext<QueryKey, ${field.type} | null>) =>`,
+    '      getManyFn(',
+    `        { ...query, ...(!!pageParam && { ${field.name}${isAscending ? 'After' : 'Before'}: pageParam }) },`,
+    '        fieldRequest,',
+    '        ...extras',
+    '      ),',
+    `    initialPageParam: null as ${field.type} | null,`,
+    `    getNextPageParam: (lastPage: ${entity.api.strings.manyResponse}<S>) =>`,
+    `      lastPage?.cursor.count ? lastPage.cursor.${isAscending ? field.strings.maxVar : field.strings.minVar} : null,`,
+    '    enabled: isEnabled(query),',
+    `    meta: { errorMessage: '[ERROR] Failed to load ${getPluralizedTitleCasedEntityName()} by ${field.name} in ${isAscending ? 'ascending' : 'descending'} order.' },`,
+    '    retry: 1,',
+    '  });',
+    '}',
+  ];
+}
+
+function buildGetOneQueryOptionsLines(isSafe) {
+  const fnType = isSafe ? 'GetOneSafeFn' : 'GetOneFn';
+  const fnVar = isSafe ? 'getOneSafeFn' : 'getOneFn';
+  return [
+    `type ${fnType}<S extends ${entity.strings.fieldRequestClass}> = (`,
+    `  params: ${entity.api.strings.getOneParams},`,
+    '  fieldRequest: S,',
+    '  ...extras: any[]',
+    `) => Promise<${entity.api.strings.oneResponse}<S${isSafe ? ', true' : ''}>>;`,
+    '',
+    `export function buildGetOne${utils.toTitleCase(entity.name)}${isSafe ? 'Safe' : ''}QueryWith<`,
+    `  F extends ${fnType}<S>,`,
+    `  S extends ${entity.strings.fieldRequestClass},`,
+    `>(${fnVar}: F, fieldRequest: S) {`,
+    '  return (',
+    `    params: ${entity.api.strings.getOneParams},`,
+    '    ...extras: Parameters<F> extends [any, any, ...infer Rest] ? Rest : never',
+    '  ) => queryOptions({',
+    `    queryKey: ${getKeysName()}.getOne(params),`,
+    `    queryFn: () => ${fnVar}(params, fieldRequest, ...extras).then((page) => page.${utils.toCamelCase(entity.name)}),`,
+    '    enabled: isEnabled(params),',
+    '  });',
+    '}',
+  ];
+}
+-%>
+<% if (entity.api.booleans.hasAny) { -%>
+  <%_ if (entity.api.booleans.hasSearch || entity.api.booleans.hasGetMany || entity.api.booleans.hasGetOne || entity.api.booleans.hasGetOneSafe) { -%>
+// library imports
+import {
+    <%_ if (entity.api.booleans.hasGetMany) { -%>
+  QueryFunctionContext,
+  QueryKey,
+  infiniteQueryOptions,
+    <%_ } -%>
+  queryOptions,
+} from '@tanstack/react-query';
+
+// entity imports
+import {
+  <%= entity.strings.fieldRequestClass %>,
+    <%_ if (entity.api.booleans.hasSearch || entity.api.booleans.hasGetMany) { -%>
+  <%= entity.api.strings.manyResponse %>,
+    <%_ } -%>
+    <%_ if (entity.api.booleans.hasGetOne || entity.api.booleans.hasGetOneSafe) { -%>
+  <%= entity.api.strings.oneResponse %>,
+    <%_ } -%>
+} from '<%= entity.apiNextTanstack.packages.hookType %>';
+  <%_ } -%>
+import {
+  <%_ if (entity.api.booleans.hasSearch) { -%>
+  <%= entity.api.strings.searchQuery %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetMany) { -%>
+  <%= entity.api.strings.getManyQuery %>,
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetOneRequest) { -%>
+  <%= entity.api.strings.getOneParams %>,
+  <%_ } -%>
+} from '<%= entity.api.request.import %>';
+
+export const <%= getKeysName() %> = {
+  all: () => ['<%= utils.pluralize(utils.toCamelCase(entity.name)) %>'],
+  searchAll: () => [...<%= getKeysName() %>.all(), 'search'],
+  getManyAll: () => [...<%= getKeysName() %>.all(), 'getMany'],
+  getOneAll: () => [...<%= getKeysName() %>.all(), 'getOne'],
+  <%_ if (entity.api.booleans.hasSearch) { -%>
+  search: (query: <%= entity.api.strings.searchQuery %>) => [...<%= getKeysName() %>.searchAll(), query],
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetMany) { -%>
+  getMany: (query: <%= entity.api.strings.getManyQuery %>) => [...<%= getKeysName() %>.getManyAll(), query],
+  <%_ } -%>
+  <%_ if (entity.api.booleans.hasGetOneRequest) { -%>
+  getOne: (params: <%= entity.api.strings.getOneParams %>) => [...<%= getKeysName() %>.getOneAll(), params],
+  <%_ } -%>
+};
+  <%_ if (entity.api.booleans.hasSearch || entity.api.booleans.hasGetMany || entity.api.booleans.hasGetOne || entity.api.booleans.hasGetOneSafe) { -%>
+
+const isEnabled = (object: object) =>
+  Object.values(object).every((value) => value !== undefined);
+    <%_ if (entity.api.booleans.hasSearch) { -%>
+
+      <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+      <%_ } -%>
+      <%_ buildSearchOrGetManyQueryOptionsLines(true).forEach((line) => { -%>
+<%- line %>
+      <%_ }); -%>
+    <%_ } -%>
+    <%_ if (entity.api.booleans.hasGetMany) { -%>
+
+      <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+      <%_ } -%>
+      <%_ buildSearchOrGetManyQueryOptionsLines(false).forEach((line) => { -%>
+<%- line %>
+      <%_ }); -%>
+      <%_ entity.fields.filter((f) => f.strings.minVar || f.strings.maxVar).forEach((field) => { -%>
+        <%_ if (field.strings.maxVar) { -%>
+
+          <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+          <%_ } -%>
+          <%_ buildGetManyPageQueryOptionsLines(field, true).forEach((line) => { -%>
+<%- line %>
+          <%_ }); -%>
+        <%_ } -%>
+        <%_ if (field.strings.minVar) { -%>
+
+          <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+          <%_ } -%>
+          <%_ buildGetManyPageQueryOptionsLines(field, false).forEach((line) => { -%>
+<%- line %>
+          <%_ }); -%>
+        <%_ } -%>
+      <%_ }); -%>
+    <%_ } -%>
+    <%_ if (entity.api.booleans.hasGetOne) { -%>
+
+      <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+      <%_ } -%>
+      <%_ buildGetOneQueryOptionsLines(false).forEach((line) => { -%>
+<%- line %>
+      <%_ }); -%>
+    <%_ } -%>
+    <%_ if (entity.api.booleans.hasGetOneSafe) { -%>
+
+      <%_ if (entity.deprecated) { -%>
+/** @deprecated */
+      <%_ } -%>
+      <%_ buildGetOneQueryOptionsLines(true).forEach((line) => { -%>
+<%- line %>
+      <%_ }); -%>
+    <%_ } -%>
+  <%_ } -%>
+<% } -%>
